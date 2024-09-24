@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
-contract DegenToken is ERC20, Ownable, ERC20Burnable 
-{
-    constructor() ERC20("Degen", "DGN") Ownable(msg.sender) {}
+contract DegenToken is ERC20, Ownable, ERC20Burnable {
+    constructor() ERC20("Degen", "DGN") Ownable(msg.sender) {
+        // Call setItemCosts to initialize items on deployment (optional)
+        setItemCosts();
+    }
 
-    function mint(address to, uint256 amount) public onlyOwner 
-    {
+    function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
     }
 
     // Burn tokens
-    function burn(uint256 amount) public override 
-    {
+    function burn(uint256 amount) public override {
         _burn(msg.sender, amount);
     }
 
@@ -25,15 +25,13 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable
     event Reward(address indexed user, uint256 amount);
     event RewardClaimed(address indexed user, uint256 amount);
 
-    function reward(address to, uint256 amount) public onlyOwner
-    {
+    function reward(address to, uint256 amount) public onlyOwner {
         require(to != address(0), "Cannot reward the zero address");
         rewards[to] += amount;
         emit Reward(to, amount);
     }
 
-    function claimReward() public 
-    {
+    function claimReward() public {
         uint256 rewardAmount = rewards[msg.sender];
         require(rewardAmount > 0, "No rewards to claim");
 
@@ -45,41 +43,44 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable
 
     // Redemption system
     mapping(string => uint256) public itemCosts;
+    mapping(address => string[]) public redeemedItemsList; // Store the list of redeemed items per user
     mapping(address => mapping(string => bool)) public redeemedItems;
 
     event ItemRedeemed(address indexed user, string itemName);
 
     // Set the cost of an item
-    function setItemCost(string memory itemName, uint256 cost) public onlyOwner 
-    {
+    function setItemCost(string memory itemName, uint256 cost) public onlyOwner {
         require(cost > 0, "Cost must be greater than 0");
         itemCosts[itemName] = cost;
     }
 
     // Redeem an item
-    function redeemItem(string memory itemName) public 
-    {
+    function redeemItem(string memory itemName) public {
         uint256 cost = itemCosts[itemName];
         require(cost > 0, "Item does not exist");
         require(balanceOf(msg.sender) >= cost, "Insufficient balance to redeem item");
 
         _burn(msg.sender, cost);
         redeemedItems[msg.sender][itemName] = true;
+        redeemedItemsList[msg.sender].push(itemName); // Add to list of redeemed items
 
         emit ItemRedeemed(msg.sender, itemName);
     }
 
     // Check if an item has been redeemed by a user
-    function hasRedeemedItem(address user, string memory itemName) public view returns (bool) 
-    {
+    function hasRedeemedItem(address user, string memory itemName) public view returns (bool) {
         return redeemedItems[user][itemName];
     }
 
+    // Get the list of items redeemed by a user
+    function getRedeemedItems(address user) public view returns (string[] memory) {
+        return redeemedItemsList[user];
+    }
+
     // Initialize the costs of specific items
-    function setupItems() public onlyOwner 
-    {
+    function setItemCosts() public onlyOwner {
         // Declare two items with their respective costs
         setItemCost("rocket", 100);
-        setItemCost("shield", 50); 
+        setItemCost("shield", 50);
     }
 }
